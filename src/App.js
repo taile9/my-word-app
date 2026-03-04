@@ -1,23 +1,551 @@
-import logo from './logo.svg';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+// Sound Helper
+const playSound = (type) => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (type === 'flip') {
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.1);
+    } else if (type === 'next') {
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+      oscillator.frequency.linearRampToValueAtTime(400, audioContext.currentTime + 0.05);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.05);
+    } else if (type === 'correct') {
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } else if (type === 'wrong') {
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.2);
+    }
+  } catch (e) { /* ignore audio error */ }
+};
+
+// TTS Helper
+const speakText = (text, lang = 'en-US') => {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // cancel pending
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
 function App() {
+  const [vocabData, setVocabData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // App Navigation: 'home', 'learning', 'quiz-menu', 'quiz-active'
+  const [appMode, setAppMode] = useState('home');
+
+  // Learning States
+  const [selectedGroup, setSelectedGroup] = useState(null); // Day number OR 'favorites'
+  const [learningWords, setLearningWords] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  // Feature Toggles (with defaults)
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+
+  // Favorites (Sync with LocalStorage)
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vocabAppFavorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Quiz States
+  // quizType: 'all', 'day', 'favorites'
+  // format: 'mc-en2ko', 'mc-ko2en', 'tx-en2ko', 'tx-ko2en'
+  const [quizConfig, setQuizConfig] = useState({ type: 'all', day: 1, format: 'mc-en2ko' });
+  const [quizQueue, setQuizQueue] = useState([]);
+  const [options, setOptions] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [quizResult, setQuizResult] = useState(null);
+  const inputRef = useRef(null);
+
+  // 1. Initial Data Fetching
+  useEffect(() => {
+    fetch('/data.csv')
+      .then(res => {
+        if (!res.ok) throw new Error('파일 없음');
+        return res.text();
+      })
+      .then(text => {
+        const lines = text.split('\n');
+        const result = [];
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i].trim();
+          if (!line) continue;
+          if (line.indexOf('Day') === 0 || line.indexOf('source') !== -1) continue;
+
+          let parts = [];
+          if (line.indexOf('\t') !== -1) parts = line.split('\t');
+          else if (line.indexOf(',') !== -1) parts = line.split(',');
+          else parts = line.split(/  +/);
+
+          if (parts.length >= 3) {
+            let d = parts[0].replace(/[^0-9]/g, '');
+            let e = parts[1].replace(/"/g, '').trim();
+            let k = parts[2].replace(/"/g, '').trim();
+
+            if (d && e && k) {
+              // Assign a unique ID for favorites tracking
+              result.push({
+                id: `${parseInt(d, 10)}-${e}`,
+                day: parseInt(d, 10),
+                eng: e,
+                kor: k
+              });
+            }
+          }
+        }
+        setVocabData(result);
+        setIsLoading(false);
+      })
+      .catch(e => {
+        setError(e.message);
+        setIsLoading(false);
+      });
+  }, []);
+
+  // Sync Favorites to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('vocabAppFavorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const toggleFavorite = (wordId, e) => {
+    e.stopPropagation(); // prevent card flip
+    setFavorites(prev =>
+      prev.includes(wordId) ? prev.filter(id => id !== wordId) : [...prev, wordId]
+    );
+  };
+
+  // Memoized unique days list
+  const days = React.useMemo(() => {
+    return [...new Set(vocabData.map(d => d.day))].sort((a, b) => a - b);
+  }, [vocabData]);
+
+
+  /* --- LEARNING LOGIC --- */
+  const startLearning = (group) => {
+    let words = [];
+    if (group === 'favorites') {
+      words = vocabData.filter(w => favorites.includes(w.id));
+    } else {
+      words = vocabData.filter(w => w.day === group);
+    }
+
+    setSelectedGroup(group);
+    setLearningWords(words);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setAppMode('learning');
+
+    if (words.length > 0 && ttsEnabled) {
+      speakText(words[0].eng, 'en-US');
+    }
+  };
+
+  const handleLearnNext = () => {
+    if (soundEnabled) playSound('next');
+    if (currentIndex < learningWords.length - 1) {
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      setIsFlipped(false);
+      if (ttsEnabled) speakText(learningWords[nextIdx].eng, 'en-US');
+    }
+  };
+
+  const handleLearnPrev = () => {
+    if (soundEnabled) playSound('next');
+    if (currentIndex > 0) {
+      const prevIdx = currentIndex - 1;
+      setCurrentIndex(prevIdx);
+      setIsFlipped(false);
+      if (ttsEnabled) speakText(learningWords[prevIdx].eng, 'en-US');
+    }
+  };
+
+  const handleLearnFlip = () => {
+    if (soundEnabled) playSound('flip');
+    const nextFlippedState = !isFlipped;
+    setIsFlipped(nextFlippedState);
+
+    // Add TTS for the corresponding side
+    if (ttsEnabled && learningWords.length > 0) {
+      const currentWord = learningWords[currentIndex];
+      if (nextFlippedState) {
+        // Flipped to Back -> Read Korean translation
+        speakText(currentWord.kor, 'ko-KR');
+      } else {
+        // Flipped to Front -> Read English word
+        speakText(currentWord.eng, 'en-US');
+      }
+    }
+  };
+
+
+  /* --- QUIZ LOGIC --- */
+  const startQuiz = () => {
+    let sourceWords = [];
+    if (quizConfig.type === 'favorites') {
+      sourceWords = vocabData.filter(w => favorites.includes(w.id));
+    } else if (quizConfig.type === 'day') {
+      sourceWords = vocabData.filter(w => w.day === parseInt(quizConfig.day, 10));
+    } else {
+      sourceWords = [...vocabData];
+    }
+
+    if (sourceWords.length === 0) {
+      alert("단어가 없습니다!");
+      return;
+    }
+
+    // Shuffle the selected words for the quiz queue
+    const queue = [...sourceWords].sort(() => Math.random() - 0.5);
+
+    setQuizQueue(queue);
+    setCurrentIndex(0);
+    setQuizResult(null);
+    setInputText('');
+    setAppMode('quiz-active');
+  };
+
+  // Generate Multiple Choice Options
+  useEffect(() => {
+    if (appMode === 'quiz-active' && quizConfig.format.includes('mc') && quizQueue.length > 0) {
+      const currentWord = quizQueue[currentIndex];
+      let wrongOptions = [];
+      while (wrongOptions.length < 4) {
+        const randomWord = vocabData[Math.floor(Math.random() * vocabData.length)];
+        const isDuplicate = wrongOptions.some(w => w.eng === randomWord.eng) || randomWord.eng === currentWord.eng;
+        if (!isDuplicate) wrongOptions.push(randomWord);
+      }
+      let combined = [...wrongOptions, currentWord];
+      combined.sort(() => Math.random() - 0.5);
+      setOptions(combined);
+
+      if (ttsEnabled && quizConfig.format === 'mc-en2ko') {
+        speakText(currentWord.eng, 'en-US');
+      }
+    }
+  }, [appMode, currentIndex, quizQueue, quizConfig.format, vocabData, ttsEnabled]);
+
+  // Handle auto-focus for text quiz input
+  useEffect(() => {
+    if (appMode === 'quiz-active' && quizConfig.format.includes('tx') && inputRef.current) {
+      inputRef.current.focus();
+      if (ttsEnabled && quizConfig.format === 'tx-en2ko') {
+        speakText(quizQueue[currentIndex].eng, 'en-US');
+      }
+    }
+  }, [appMode, currentIndex, quizConfig.format, ttsEnabled, quizQueue]);
+
+
+  const checkMultipleChoice = (selectedOption) => {
+    if (quizResult !== null) return;
+    const currentWord = quizQueue[currentIndex];
+    if (selectedOption.eng === currentWord.eng) {
+      if (soundEnabled) playSound('correct');
+      setQuizResult('correct');
+      setTimeout(() => { moveToNextQuiz(); }, 1000);
+    } else {
+      if (soundEnabled) playSound('wrong');
+      setQuizResult('wrong');
+    }
+  };
+
+  const checkTextInput = (e) => {
+    e.preventDefault();
+    if (quizResult !== null) return;
+
+    const currentWord = quizQueue[currentIndex];
+    const isEnToKo = quizConfig.format === 'tx-en2ko';
+    const targetAnswer = isEnToKo ? currentWord.kor : currentWord.eng;
+
+    const userAns = inputText.trim().toLowerCase();
+    const trueAns = targetAnswer.trim().toLowerCase();
+
+    const correct = isEnToKo ? (trueAns.includes(userAns) && userAns.length > 0) : (userAns === trueAns);
+
+    if (correct) {
+      if (soundEnabled) playSound('correct');
+      setQuizResult('correct');
+      setTimeout(() => { moveToNextQuiz(); }, 1000);
+    } else {
+      if (soundEnabled) playSound('wrong');
+      setQuizResult('wrong');
+    }
+  };
+
+  const moveToNextQuiz = () => {
+    if (currentIndex < quizQueue.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setQuizResult(null);
+      setInputText('');
+    } else {
+      alert("퀴즈가 모두 끝났습니다!");
+      setAppMode('home');
+    }
+  };
+
+
+  /* --- RENDERERS --- */
+  if (error) {
+    return (
+      <div className="app-container">
+        <div className="error-container">
+          <h2 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ 오류 발생</h2>
+          <p>public 폴더에 <strong>data.csv</strong> 파일이 있는지 확인해주세요.</p>
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <svg className="loading-spinner" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+        </svg>
+        <h2>단어장 준비중...</h2>
+      </div>
+    );
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <div className={`app-container ${appMode !== 'home' ? 'app-container-wide' : ''}`}>
+      <header>
+        <h1>
+          💜 VocaZip
+        </h1>
+
+        {appMode === 'home' && (
+          <div className="top-controls">
+            <button className={`toggle-btn ${soundEnabled ? 'active' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}>
+              {soundEnabled ? '🔊 효과음 ON' : '🔇 효과음 OFF'}
+            </button>
+            <button className={`toggle-btn ${ttsEnabled ? 'active' : ''}`} onClick={() => setTtsEnabled(!ttsEnabled)}>
+              {ttsEnabled ? '🗣️ 발음 ON' : '🙅 발음 OFF'}
+            </button>
+          </div>
+        )}
       </header>
+
+      {/* 1. HOME SCREEN */}
+      {appMode === 'home' && (
+        <div className="main-menu">
+          <button className="action-btn" onClick={() => setAppMode('quiz-menu')}>
+            🎯 단어 시험(퀴즈) 시작하기
+          </button>
+
+          <div className="menu-panel">
+            <h2>★ 즐겨찾기 학습 ({favorites.length}단어)</h2>
+            {favorites.length > 0 ? (
+              <button className="action-btn" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }} onClick={() => startLearning('favorites')}>
+                즐겨찾기 단어장 열기
+              </button>
+            ) : (
+              <p style={{ textAlign: 'center', color: '#94a3b8', margin: 0 }}>즐겨찾기한 단어가 없습니다.</p>
+            )}
+          </div>
+
+          <div className="menu-panel">
+            <h2>Day별 학습 ({days.length}일)</h2>
+            <div className="grid-container">
+              {days.map(d => (
+                <button key={d} className="day-btn" onClick={() => startLearning(d)}>
+                  Day {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. QUIZ MENU */}
+      {appMode === 'quiz-menu' && (
+        <div className="menu-panel">
+          <div className="quiz-header">
+            <button className="back-btn" onClick={() => setAppMode('home')}>← 뒤로</button>
+            <h2 style={{ margin: 0, color: 'var(--text-main)' }}>퀴즈 설정</h2>
+            <div style={{ width: 70 }}></div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>1. 시험 범위</label>
+              <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.type} onChange={(e) => setQuizConfig({ ...quizConfig, type: e.target.value })}>
+                <option value="all">전체 단어 랜덤</option>
+                <option value="day">특정 Day 랜덤</option>
+                <option value="favorites">즐겨찾기 단어 랜덤</option>
+              </select>
+            </div>
+
+            {quizConfig.type === 'day' && (
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Day 선택</label>
+                <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.day} onChange={(e) => setQuizConfig({ ...quizConfig, day: parseInt(e.target.value, 10) })}>
+                  {days.map(d => <option key={d} value={d}>Day {d}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>2. 문제 유형</label>
+              <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.format} onChange={(e) => setQuizConfig({ ...quizConfig, format: e.target.value })}>
+                <option value="mc-en2ko">객관식 5지선다 (영 ➔ 한)</option>
+                <option value="mc-ko2en">객관식 5지선다 (한 ➔ 영)</option>
+                <option value="tx-en2ko">주관식 직접입력 (영 ➔ 한 뜻입력)</option>
+                <option value="tx-ko2en">주관식 직접입력 (한 ➔ 영 스펠링)</option>
+              </select>
+            </div>
+
+            <button className="action-btn" style={{ marginTop: '20px' }} onClick={startQuiz}>시험 시작!</button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. LEARNING MODE */}
+      {appMode === 'learning' && (
+        <div className="quiz-container">
+          <div className="quiz-header">
+            <button className="back-btn" onClick={() => setAppMode('home')}>← 종료</button>
+            <div className="progress-bar">{selectedGroup === 'favorites' ? '즐겨찾기' : `Day ${selectedGroup}`} ({currentIndex + 1} / {learningWords.length})</div>
+          </div>
+
+          {learningWords.length > 0 ? (
+            <div className="card-wrapper">
+              <div className={`card ${isFlipped ? 'flipped' : ''}`} onClick={handleLearnFlip}>
+                <div className="card-content front">
+                  <button
+                    className={`star-btn ${favorites.includes(learningWords[currentIndex].id) ? 'active' : 'inactive'}`}
+                    onClick={(e) => toggleFavorite(learningWords[currentIndex].id, e)}>
+                    <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  </button>
+
+                  <h3 className="large-text">{learningWords[currentIndex]?.eng || ''}</h3>
+                  <div className="click-hint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+                    클릭하여 뜻 확인
+                  </div>
+                </div>
+                <div className="card-content back">
+                  <button
+                    className={`star-btn ${favorites.includes(learningWords[currentIndex].id) ? 'active' : 'inactive'}`}
+                    onClick={(e) => toggleFavorite(learningWords[currentIndex].id, e)}>
+                    <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  </button>
+                  <h3 className="large-text">{learningWords[currentIndex]?.kor || ''}</h3>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state"><h3>단어가 없습니다.</h3></div>
+          )}
+
+          {learningWords.length > 0 && (
+            <div className="controls mt-4">
+              <button className="btn-prev" disabled={currentIndex === 0} onClick={handleLearnPrev}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg> 이전
+              </button>
+              <button className="btn-next" disabled={currentIndex === learningWords.length - 1} onClick={handleLearnNext}>
+                다음 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. ACTIVE QUIZ MODE */}
+      {appMode === 'quiz-active' && (
+        <div className="quiz-container">
+          <div className="quiz-header">
+            <button className="back-btn" onClick={() => setAppMode('quiz-menu')}>← 나가기</button>
+            <div className="progress-bar">Q {currentIndex + 1} / {quizQueue.length}</div>
+          </div>
+
+          {quizQueue.length > 0 && quizConfig.format.includes('mc') && (
+            <div className={`quiz-panel ${quizResult}`}>
+              <div className="question-box">
+                <h2>{quizConfig.format === 'mc-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
+              </div>
+              <div className="options-grid">
+                {options.map((opt, idx) => (
+                  <button key={idx} className="option-btn" disabled={quizResult !== null} onClick={() => checkMultipleChoice(opt)}>
+                    {quizConfig.format === 'mc-en2ko' ? opt.kor : opt.eng}
+                  </button>
+                ))}
+              </div>
+              {quizResult === 'correct' && <div className="result-msg correct">정답입니다!</div>}
+              {quizResult === 'wrong' && <div className="result-msg wrong">틀렸습니다. 정답: {quizConfig.format === 'mc-en2ko' ? quizQueue[currentIndex].kor : quizQueue[currentIndex].eng}</div>}
+            </div>
+          )}
+
+          {quizQueue.length > 0 && quizConfig.format.includes('tx') && (
+            <div className={`quiz-panel ${quizResult}`}>
+              <div className="question-box">
+                <h2>{quizConfig.format === 'tx-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
+                <p className="sub-hint">{quizConfig.format === 'tx-en2ko' ? '뜻을 입력하세요' : '영어 단어(스펠링)를 입력하세요'}</p>
+              </div>
+
+              <form onSubmit={checkTextInput} className="text-input-form">
+                <input
+                  ref={inputRef} type="text" value={inputText}
+                  onChange={e => setInputText(e.target.value)}
+                  placeholder="정답 입력..."
+                  disabled={quizResult !== null}
+                />
+                <button type="submit" disabled={quizResult !== null || !inputText.trim()}>제출</button>
+              </form>
+
+              {quizResult === 'correct' && <div className="result-msg correct">정답입니다!</div>}
+              {quizResult === 'wrong' && <div className="result-msg wrong">틀렸습니다. 정답: {quizConfig.format === 'tx-en2ko' ? quizQueue[currentIndex].kor : quizQueue[currentIndex].eng}</div>}
+            </div>
+          )}
+
+          <div className="controls mt-4">
+            {quizResult !== null && (
+              <button className="btn-next" onClick={moveToNextQuiz}>
+                다음 문제로 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
