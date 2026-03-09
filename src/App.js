@@ -92,6 +92,7 @@ function App() {
   const [options, setOptions] = useState([]);
   const [inputText, setInputText] = useState('');
   const [quizResult, setQuizResult] = useState(null);
+  const [wrongWords, setWrongWords] = useState([]);
   const inputRef = useRef(null);
 
   // 1. Initial Data Fetching
@@ -120,12 +121,13 @@ function App() {
             let k = parts[2].replace(/"/g, '').trim();
 
             if (d && e && k) {
-              // Assign a unique ID for favorites tracking
               result.push({
                 id: `${parseInt(d, 10)}-${e}`,
                 day: parseInt(d, 10),
                 eng: e,
-                kor: k
+                kor: k,
+                exEng: parts[3] ? parts[3].replace(/"/g, '').trim() : '',
+                exKor: parts[4] ? parts[4].replace(/"/g, '').trim() : ''
               });
             }
           }
@@ -239,6 +241,7 @@ function App() {
     setCurrentIndex(0);
     setQuizResult(null);
     setInputText('');
+    setWrongWords([]);
     setAppMode('quiz-active');
   };
 
@@ -279,11 +282,13 @@ function App() {
     if (selectedOption.eng === currentWord.eng) {
       if (soundEnabled) playSound('correct');
       setQuizResult('correct');
-      setTimeout(() => { moveToNextQuiz(); }, 1000);
     } else {
       if (soundEnabled) playSound('wrong');
       setQuizResult('wrong');
+      setWrongWords(prev => prev.some(w => w.id === currentWord.id) ? prev : [...prev, currentWord]);
     }
+    // Auto-advance after 1.2s regardless of correct/wrong
+    setTimeout(() => { moveToNextQuiz(); }, 1200);
   };
 
   const checkTextInput = (e) => {
@@ -302,11 +307,13 @@ function App() {
     if (correct) {
       if (soundEnabled) playSound('correct');
       setQuizResult('correct');
-      setTimeout(() => { moveToNextQuiz(); }, 1000);
     } else {
       if (soundEnabled) playSound('wrong');
       setQuizResult('wrong');
+      setWrongWords(prev => prev.some(w => w.id === currentWord.id) ? prev : [...prev, currentWord]);
     }
+    // Auto-advance after 1.2s regardless of correct/wrong
+    setTimeout(() => { moveToNextQuiz(); }, 1200);
   };
 
   const moveToNextQuiz = () => {
@@ -315,8 +322,7 @@ function App() {
       setQuizResult(null);
       setInputText('');
     } else {
-      alert("퀴즈가 모두 끝났습니다!");
-      setAppMode('home');
+      setAppMode('quiz-result');
     }
   };
 
@@ -455,7 +461,6 @@ function App() {
                     onClick={(e) => toggleFavorite(learningWords[currentIndex].id, e)}>
                     <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                   </button>
-
                   <h3 className="large-text">{learningWords[currentIndex]?.eng || ''}</h3>
                   <div className="click-hint">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
@@ -469,6 +474,14 @@ function App() {
                     <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                   </button>
                   <h3 className="large-text">{learningWords[currentIndex]?.kor || ''}</h3>
+
+                  {/* Example Sentences */}
+                  {(learningWords[currentIndex]?.exEng || learningWords[currentIndex]?.exKor) && (
+                    <div className="example-box">
+                      {learningWords[currentIndex]?.exEng && <p className="ex-eng">"{learningWords[currentIndex].exEng}"</p>}
+                      {learningWords[currentIndex]?.exKor && <p className="ex-kor">{learningWords[currentIndex].exKor}</p>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -499,6 +512,11 @@ function App() {
 
           {quizQueue.length > 0 && quizConfig.format.includes('mc') && (
             <div className={`quiz-panel ${quizResult}`}>
+              <button
+                className={`star-btn ${favorites.includes(quizQueue[currentIndex].id) ? 'active' : 'inactive'}`}
+                onClick={(e) => toggleFavorite(quizQueue[currentIndex].id, e)}>
+                <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              </button>
               <div className="question-box">
                 <h2>{quizConfig.format === 'mc-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
               </div>
@@ -516,6 +534,11 @@ function App() {
 
           {quizQueue.length > 0 && quizConfig.format.includes('tx') && (
             <div className={`quiz-panel ${quizResult}`}>
+              <button
+                className={`star-btn ${favorites.includes(quizQueue[currentIndex].id) ? 'active' : 'inactive'}`}
+                onClick={(e) => toggleFavorite(quizQueue[currentIndex].id, e)}>
+                <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              </button>
               <div className="question-box">
                 <h2>{quizConfig.format === 'tx-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
                 <p className="sub-hint">{quizConfig.format === 'tx-en2ko' ? '뜻을 입력하세요' : '영어 단어(스펠링)를 입력하세요'}</p>
@@ -535,14 +558,54 @@ function App() {
               {quizResult === 'wrong' && <div className="result-msg wrong">틀렸습니다. 정답: {quizConfig.format === 'tx-en2ko' ? quizQueue[currentIndex].kor : quizQueue[currentIndex].eng}</div>}
             </div>
           )}
+        </div>
+      )}
 
-          <div className="controls mt-4">
-            {quizResult !== null && (
-              <button className="btn-next" onClick={moveToNextQuiz}>
-                다음 문제로 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+      {/* 5. QUIZ RESULT MODE */}
+      {appMode === 'quiz-result' && (
+        <div className="menu-panel" style={{ textAlign: 'center' }}>
+          <h2>🎉 퀴즈 완료!</h2>
+          <p style={{ fontSize: '1.2rem', marginBottom: '20px' }}>
+            총 {quizQueue.length}문제 중 {quizQueue.length - wrongWords.length}문제를 맞췄습니다!
+          </p>
+
+          {wrongWords.length > 0 ? (
+            <div style={{ marginBottom: '30px' }}>
+              <p style={{ color: '#ef4444', fontWeight: 'bold' }}>틀린 단어가 {wrongWords.length}개 있습니다.</p>
+              <button className="action-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', marginTop: '16px' }}
+                onClick={() => {
+                  setQuizQueue([...wrongWords].sort(() => Math.random() - 0.5));
+                  setCurrentIndex(0);
+                  setQuizResult(null);
+                  setInputText('');
+                  setWrongWords([]);
+                  setAppMode('quiz-active');
+                }}>
+                🔄 틀린 단어 다시 풀기
               </button>
-            )}
-          </div>
+              <button className="action-btn" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', marginTop: '16px', color: 'white' }}
+                onClick={() => {
+                  setFavorites(prev => {
+                    const nextFavs = [...prev];
+                    wrongWords.forEach(w => {
+                      if (!nextFavs.includes(w.id)) nextFavs.push(w.id);
+                    });
+                    return nextFavs;
+                  });
+                  alert('틀린 단어가 모두 즐겨찾기에 추가되었습니다! ⭐');
+                }}>
+                ⭐ 틀린 단어 모두 즐겨찾기
+              </button>
+            </div>
+          ) : (
+            <div style={{ marginBottom: '30px' }}>
+              <p style={{ color: '#22c55e', fontWeight: 'bold' }}>모두 맞췄습니다! 완벽해요!</p>
+            </div>
+          )}
+
+          <button className="back-btn" style={{ width: '100%', padding: '16px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.8)' }} onClick={() => setAppMode('home')}>
+            🏠 홈으로 돌아가기
+          </button>
         </div>
       )}
 
