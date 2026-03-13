@@ -84,6 +84,14 @@ function App() {
     } catch { return []; }
   });
 
+  // Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vocabAppDarkMode');
+      return saved ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
+
   // Quiz States
   // quizType: 'all', 'day', 'favorites'
   // format: 'mc-en2ko', 'mc-ko2en', 'tx-en2ko', 'tx-ko2en'
@@ -181,6 +189,16 @@ function App() {
   useEffect(() => {
     localStorage.setItem('vocabAppFavorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  // Sync Dark Mode
+  useEffect(() => {
+    localStorage.setItem('vocabAppDarkMode', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [isDarkMode]);
 
   const toggleFavorite = (wordId, e) => {
     e.stopPropagation(); // prevent card flip
@@ -390,9 +408,7 @@ function App() {
   return (
     <div className={`app-container ${appMode !== 'home' ? 'app-container-wide' : ''}`}>
       <header>
-        <h1>
-          💜 VocaZip
-        </h1>
+        <h1>snapvoca</h1>
 
         {appMode === 'home' && (
           <div className="top-controls">
@@ -401,6 +417,9 @@ function App() {
             </button>
             <button className={`toggle-btn ${ttsEnabled ? 'active' : ''}`} onClick={() => setTtsEnabled(!ttsEnabled)}>
               {ttsEnabled ? '🗣️ 발음 ON' : '🙅 발음 OFF'}
+            </button>
+            <button className={`toggle-btn ${isDarkMode ? 'active' : ''}`} onClick={() => setIsDarkMode(!isDarkMode)}>
+              {isDarkMode ? '🌙 다크 모드 ON' : '☀️ 다크 모드 OFF'}
             </button>
           </div>
         )}
@@ -450,9 +469,9 @@ function App() {
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>1. 시험 범위</label>
               <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.type} onChange={(e) => setQuizConfig({ ...quizConfig, type: e.target.value })}>
-                <option value="all">전체 단어 랜덤</option>
-                <option value="day">특정 Day 랜덤</option>
-                <option value="favorites">즐겨찾기 단어 랜덤</option>
+                <option value="all">전체 단어</option>
+                <option value="day">특정 Day</option>
+                <option value="favorites">즐겨찾기 단어</option>
               </select>
             </div>
 
@@ -468,10 +487,10 @@ function App() {
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>2. 문제 유형</label>
               <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.format} onChange={(e) => setQuizConfig({ ...quizConfig, format: e.target.value })}>
-                <option value="mc-en2ko">객관식 5지선다 (영 ➔ 한)</option>
-                <option value="mc-ko2en">객관식 5지선다 (한 ➔ 영)</option>
-                <option value="tx-en2ko">주관식 직접입력 (영 ➔ 한 뜻입력)</option>
-                <option value="tx-ko2en">주관식 직접입력 (한 ➔ 영 스펠링)</option>
+                <option value="mc-en2ko">객관식 (영 ➔ 한)</option>
+                <option value="mc-ko2en">객관식 (한 ➔ 영)</option>
+                <option value="tx-en2ko">주관식 (영 ➔ 한 뜻입력)</option>
+                <option value="tx-ko2en">주관식 (한 ➔ 영 스펠링)</option>
               </select>
             </div>
 
