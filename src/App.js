@@ -97,41 +97,77 @@ function App() {
 
   // 1. Initial Data Fetching
   useEffect(() => {
-    fetch('/data.csv')
+    fetch('/data2.csv')
       .then(res => {
         if (!res.ok) throw new Error('파일 없음');
         return res.text();
       })
       .then(text => {
-        const lines = text.split('\n');
+        // Normalize line endings and split
+        const lines = text.replace(/\r/g, '').split('\n');
         const result = [];
+        let currentEntry = null;
+
+        const pushEntry = (entry) => {
+          if (entry) {
+            // Extract synonyms from kor before pushing
+            const synonymMatch = entry.kor.match(/\([^)]+\)/g);
+            if (synonymMatch) {
+              entry.synonyms = synonymMatch.join(' ');
+              entry.kor = entry.kor.replace(/\([^)]+\)/g, '').trim();
+            } else {
+              entry.synonyms = '';
+            }
+            result.push(entry);
+          }
+        };
+
         for (let i = 0; i < lines.length; i++) {
           let line = lines[i].trim();
-          if (!line) continue;
-          if (line.indexOf('Day') === 0 || line.indexOf('source') !== -1) continue;
+          if (!line || line.startsWith('source')) continue;
 
-          let parts = [];
-          if (line.indexOf('\t') !== -1) parts = line.split('\t');
-          else if (line.indexOf(',') !== -1) parts = line.split(',');
-          else parts = line.split(/  +/);
+          // Check if this line starts a new day entry (e.g. "day28", "Day 1")
+          if (/^day\s*\d+/i.test(line)) {
+            // Save the previous entry if it exists
+            pushEntry(currentEntry);
 
-          if (parts.length >= 3) {
-            let d = parts[0].replace(/[^0-9]/g, '');
-            let e = parts[1].replace(/"/g, '').trim();
-            let k = parts[2].replace(/"/g, '').trim();
+            let parts = lines[i].replace(/\r/g, '').split('\t');
+            if (parts.length < 2 && line.includes(',')) parts = line.split(',');
+            if (parts.length < 2) parts = line.split(/  +/);
 
-            if (d && e && k) {
-              result.push({
+            if (parts.length >= 3) {
+              let d = parts[0].replace(/[^0-9]/g, '');
+              let e = parts[1].replace(/"/g, '').trim();
+              let k = parts[2].replace(/"/g, '').trim();
+
+              currentEntry = {
                 id: `${parseInt(d, 10)}-${e}`,
                 day: parseInt(d, 10),
                 eng: e,
                 kor: k,
                 exEng: parts[3] ? parts[3].replace(/"/g, '').trim() : '',
                 exKor: parts[4] ? parts[4].replace(/"/g, '').trim() : ''
-              });
+              };
+            }
+          } else if (currentEntry) {
+            // Check if it's an example sentence row: usually starts with a tab and has at least 2 parts
+            let parts = lines[i].replace(/\r/g, '').split('\t');
+            if (parts.length >= 3 && parts[0].trim() === '') {
+              currentEntry.exEng = parts[1].replace(/"/g, '').trim();
+              currentEntry.exKor = parts[2].replace(/"/g, '').trim();
+            } else {
+              // Otherwise it's an extension of the Korean translation/synonyms
+              const cleanedLine = line.replace(/(^"|"$)/g, '').trim();
+              if (cleanedLine) {
+                currentEntry.kor += '\n' + cleanedLine;
+              }
             }
           }
         }
+
+        // Push the very last entry
+        pushEntry(currentEntry);
+
         setVocabData(result);
         setIsLoading(false);
       })
@@ -474,6 +510,10 @@ function App() {
                     <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                   </button>
                   <h3 className="large-text">{learningWords[currentIndex]?.kor || ''}</h3>
+
+                  {learningWords[currentIndex]?.synonyms && (
+                    <div className="synonyms-text">{learningWords[currentIndex].synonyms}</div>
+                  )}
 
                   {/* Example Sentences */}
                   {(learningWords[currentIndex]?.exEng || learningWords[currentIndex]?.exKor) && (

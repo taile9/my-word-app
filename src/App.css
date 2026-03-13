@@ -322,6 +322,14 @@ header h1 {
   box-sizing: border-box;
 }
 
+.synonyms-text {
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
+  color: #666;
+  margin-top: 8px;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 .ex-eng {
   font-size: clamp(1.1rem, 4vw, 1.4rem);
   font-weight: 600;
