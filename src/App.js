@@ -111,70 +111,65 @@ function App() {
         return res.text();
       })
       .then(text => {
-        // Normalize line endings and split
+        // data2.csv is normalized as:
+        // - word line:   dayN \t word \t meaning
+        // - example line: \t exEng \t exKor
         const lines = text.replace(/\r/g, '').split('\n');
         const result = [];
         let currentEntry = null;
 
-        const pushEntry = (entry) => {
-          if (entry) {
-            // Extract synonyms from kor before pushing
-            const synonymMatch = entry.kor.match(/\([^)]+\)/g);
-            if (synonymMatch) {
-              entry.synonyms = synonymMatch.join(' ');
-              entry.kor = entry.kor.replace(/\([^)]+\)/g, '').trim();
-            } else {
-              entry.synonyms = '';
-            }
-            result.push(entry);
+        const finalizeAndPush = (entry) => {
+          if (!entry) return;
+          const synonymMatch = entry.kor.match(/\([^)]+\)/g);
+          if (synonymMatch) {
+            entry.synonyms = synonymMatch.join(' ');
+            entry.kor = entry.kor.replace(/\([^)]+\)/g, '').trim();
+          } else {
+            entry.synonyms = '';
           }
+          entry.kor = entry.kor.trim();
+          result.push(entry);
         };
 
-        for (let i = 0; i < lines.length; i++) {
-          let line = lines[i].trim();
-          if (!line || line.startsWith('source')) continue;
+        for (const rawLine of lines) {
+          const line = rawLine;
+          if (!line.trim()) continue;
 
-          // Check if this line starts a new day entry (e.g. "day28", "Day 1")
-          if (/^day\s*\d+/i.test(line)) {
-            // Save the previous entry if it exists
-            pushEntry(currentEntry);
+          const parts = line.split('\t');
+          const dayCol = (parts[0] || '').trim();
 
-            let parts = lines[i].replace(/\r/g, '').split('\t');
-            if (parts.length < 2 && line.includes(',')) parts = line.split(',');
-            if (parts.length < 2) parts = line.split(/  +/);
+          if (/^day\s*\d+$/i.test(dayCol)) {
+            // new word row
+            finalizeAndPush(currentEntry);
 
-            if (parts.length >= 3) {
-              let d = parts[0].replace(/[^0-9]/g, '');
-              let e = parts[1].replace(/"/g, '').trim();
-              let k = parts[2].replace(/"/g, '').trim();
+            const d = dayCol.replace(/[^0-9]/g, '');
+            const e = (parts[1] || '').replace(/"/g, '').trim();
+            const k = (parts[2] || '').replace(/"/g, '').trim();
 
-              currentEntry = {
-                id: `${parseInt(d, 10)}-${e}`,
-                day: parseInt(d, 10),
-                eng: e,
-                kor: k,
-                exEng: parts[3] ? parts[3].replace(/"/g, '').trim() : '',
-                exKor: parts[4] ? parts[4].replace(/"/g, '').trim() : ''
-              };
+            if (!d || !e || !k) {
+              currentEntry = null;
+              continue;
             }
-          } else if (currentEntry) {
-            // Check if it's an example sentence row: usually starts with a tab and has at least 2 parts
-            let parts = lines[i].replace(/\r/g, '').split('\t');
-            if (parts.length >= 3 && parts[0].trim() === '') {
-              currentEntry.exEng = parts[1].replace(/"/g, '').trim();
-              currentEntry.exKor = parts[2].replace(/"/g, '').trim();
-            } else {
-              // Otherwise it's an extension of the Korean translation/synonyms
-              const cleanedLine = line.replace(/(^"|"$)/g, '').trim();
-              if (cleanedLine) {
-                currentEntry.kor += '\n' + cleanedLine;
-              }
-            }
+
+            currentEntry = {
+              id: `${parseInt(d, 10)}-${e}`,
+              day: parseInt(d, 10),
+              eng: e,
+              kor: k,
+              synonyms: '',
+              exEng: '',
+              exKor: ''
+            };
+          } else if (currentEntry && dayCol === '') {
+            // example row
+            const exEng = (parts[1] || '').replace(/"/g, '').trim();
+            const exKor = (parts[2] || '').replace(/"/g, '').trim();
+            if (exEng && !currentEntry.exEng) currentEntry.exEng = exEng;
+            if (exKor && !currentEntry.exKor) currentEntry.exKor = exKor;
           }
         }
 
-        // Push the very last entry
-        pushEntry(currentEntry);
+        finalizeAndPush(currentEntry);
 
         setVocabData(result);
         setIsLoading(false);
@@ -448,7 +443,10 @@ function App() {
             <div className="grid-container">
               {days.map(d => (
                 <button key={d} className="day-btn" onClick={() => startLearning(d)}>
-                  Day {d}
+                  <span style={{ display: 'block', lineHeight: 1.05 }}>DAY</span>
+                  <span style={{ display: 'block', fontWeight: 800, fontSize: '1.1em' }}>
+                    {String(d).padStart(2, '0')}
+                  </span>
                 </button>
               ))}
             </div>

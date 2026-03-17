@@ -3,7 +3,8 @@
 
 :root {
   /* Light Theme Variables */
-  --primary: #8b5cf6; /* Indigo/Purple */
+  --primary: #8b5cf6;
+  /* Indigo/Purple */
   --secondary: #a855f7;
   --bg-gradient: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
   --card-bg: rgba(255, 255, 255, 0.85);
@@ -23,7 +24,8 @@
 
 body.dark-mode {
   /* Dark Theme Variables */
-  --primary: #a78bfa; /* Lighter Purple for contrast */
+  --primary: #a78bfa;
+  /* Lighter Purple for contrast */
   --secondary: #c084fc;
   --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
   --card-bg: rgba(30, 41, 59, 0.75);
@@ -54,7 +56,9 @@ body {
   transition: background 0.5s ease;
 }
 
-button, input, select {
+button,
+input,
+select {
   -webkit-tap-highlight-color: transparent;
   outline: none;
   font-family: inherit;
@@ -74,8 +78,15 @@ button, input, select {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 header h1 {
@@ -240,7 +251,7 @@ header h1 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
 }
 
@@ -285,24 +296,34 @@ header h1 {
   border-radius: 12px;
   box-shadow: 0 2px 5px var(--shadow-color);
   border: 1px solid var(--card-border);
+  white-space: nowrap;
+  min-width: 180px;
+  text-align: center;
 }
 
 /* Flashcard */
 .card-wrapper {
   perspective: 1200px;
   margin-bottom: 24px;
+  container-type: inline-size;
   position: relative;
   width: 100%;
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
-  height: clamp(400px, 60vh, 580px);
+  height: 580px;
+  max-height: 580px;
+  flex-shrink: 0;
+  /* Prevent shrinking in flex context */
 }
 
 .card {
   width: 100%;
   height: 100%;
-  position: relative;
+  position: absolute;
+  /* Changed from relative to absolute to firmly pin the dimensions */
+  top: 0;
+  left: 0;
   transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1);
   transform-style: preserve-3d;
   cursor: pointer;
@@ -330,6 +351,8 @@ header h1 {
   border: 1px solid var(--card-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+  /* Prevent inner content from pushing the card larger */
 }
 
 .card-content.back {
@@ -339,7 +362,7 @@ header h1 {
 
 /* Text Formatting */
 .large-text {
-  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-size: clamp(2rem, 8cqw, 4rem);
   margin: 0;
   font-weight: 800;
   text-align: center;
@@ -349,8 +372,11 @@ header h1 {
   white-space: pre-line;
   line-height: 1.2;
   width: 100%;
-  max-height: 100%;
-  overflow-y: auto;
+  flex: 1;
+  /* Add flex: 1 to push the click-hint to the bottom predictably */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-content.back .large-text {
@@ -358,18 +384,23 @@ header h1 {
 }
 
 .example-box {
-  margin-top: 30px;
+  margin-top: 10px;
+  /* Reduced margin */
   text-align: center;
   width: 100%;
-  padding: 0 20px;
+  padding: 0 16px;
   box-sizing: border-box;
-  background: rgba(0,0,0,0.03);
-  border-radius: 16px;
-  padding: 20px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 20px;
+  padding: 10px;
+  /* Reduced paddings */
+  max-height: 30%;
+  /* limit height so it doesn't push bounds */
+  overflow-y: auto;
 }
 
 body.dark-mode .example-box {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .synonyms-text {
@@ -382,17 +413,17 @@ body.dark-mode .example-box {
 }
 
 .ex-eng {
-  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  font-size: clamp(0.9rem, 2vw, 0.9rem);
   font-weight: 600;
   color: var(--text-main);
   font-style: italic;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   word-break: keep-all;
   overflow-wrap: break-word;
 }
 
 .ex-kor {
-  font-size: clamp(1.1rem, 3.5vw, 1.3rem);
+  font-size: clamp(0.8rem, 1.75vw, 0.8rem);
   color: var(--text-muted);
   margin: 0;
   word-break: keep-all;
@@ -464,13 +495,25 @@ body.dark-mode .star-btn {
 }
 
 @keyframes pulse {
-  0% { transform: translateY(0); box-shadow: 0 0 0 rgba(0,0,0,0); }
-  50% { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-  100% { transform: translateY(0); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  }
+
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
 }
 
 /* Quiz Panel */
 .quiz-panel {
+  container-type: inline-size;
   background: var(--card-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -481,7 +524,7 @@ body.dark-mode .star-btn {
   border: 1px solid var(--card-border);
   margin-bottom: 24px;
   max-width: 800px;
-  height: clamp(450px, 65vh, 600px);
+  height: 580px;
   margin-left: auto;
   margin-right: auto;
   display: flex;
@@ -509,7 +552,7 @@ body.dark-mode .star-btn {
 }
 
 .question-box h2 {
-  font-size: clamp(3rem, 8vw, 5rem);
+  font-size: clamp(1.8rem, 8cqw, 4rem);
   margin: 0;
   color: var(--text-main);
   word-break: keep-all;
@@ -534,7 +577,8 @@ body.dark-mode .star-btn {
   .options-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .options-grid > :last-child:nth-child(odd) {
+
+  .options-grid> :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 }
@@ -616,8 +660,15 @@ body.dark-mode .star-btn {
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .result-msg.correct {

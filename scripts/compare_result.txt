@@ -1,0 +1,93 @@
+=== data.csv day1 (38 words) ===
+L2: applicant | 지원자, 신청자
+L3: requirement | 필요조건, 요건
+L4: meet | (필요,요구 등을)만족시키다
+L5: qualified | 자격있는, 적격의
+L6: candidate | 후보자, 지원자
+L7: confidence | 확신, 자신, 신임
+L8: highly | 매우, 대단히
+L9: professional | 전문적인, 직업의, 전문가
+L10: interview | 면접, 면접을 보다
+L11: hire | 고용하다
+L12: training | 교육, 훈련
+L13: reference | 추천서, 참고
+L14: position | 일자리, 직책, 두다
+L15: achievement | 성취, 달성
+L16: impressed | 인상 깊게 생각하는, 감명을 받은
+L17: excellent | 훌륭한
+L18: eligible | 자격이 있는, 적격의
+L19: identify | 알아보다, 확인하다
+L20: associate | 관련시키다
+L21: condition | 조건
+L22: employment | 고용
+L23: lack | ~이 없다, 부족
+L24: managerial | 관리의
+L25: diligent | 성실한
+L26: familiar | 익숙한, 친숙한
+L27: proficiency | 숙달, 능숙
+L28: prospective | 장래의, 미래의
+L29: appeal | 관심을 끌다, 매력적이다
+L30: specialize | ~을 전공하다, 전문적으로 다루다
+L31: apprehensive | 걱정하는, 염려하는
+L32: consultant | 고문, 컨설턴트 <<MISSING from data2>>
+L33: entitle | 자격을 주다
+L34: degree | 학위 <<MISSING from data2>>
+L35: payroll | 임금대장, 금료명부
+L36: recruit | (신입사원등을)모집하다 <<MISSING from data2>>
+L37: certification | 증명서, 증명
+L38: occupation | 직업 <<MISSING from data2>>
+L39: wage | 임금, 급료
+
+=== data2.csv day1 (39 words) ===
+L1: resume | 이력서 <<EXTRA not in data1>>
+L3: applicant | 지원자, 신청자
+L5: requirement | 필요조건, 요건
+L7: meet | (필요,요구 등을)만족시키다
+L9: qualified | 자격있는, 적격의
+L11: candidate | 후보자, 지원자
+L13: confidence | 확신, 자신, 신임
+L15: highly | 매우, 대단히
+L17: professional | 전문적인, 직업의, 전문가
+L19: interview | 면접, 면접을 보다
+L21: hire | 고용하다
+L23: training | 교육, 훈련
+L25: reference | 추천서, 참고
+L27: position | 일자리, 직책, 두다
+L29: achievement | 성취, 달성
+L31: impressed | 인상 깊게 생각하는, 감명을 받은
+L33: excellent | 훌륭한
+L35: eligible | 자격이 있는, 적격의
+L37: identify | 알아보다, 확인하다
+L39: associate | 관련시키다
+L41: condition | 조건
+L43: employment | 고용
+L45: lack | ~이 없다, 부족
+L47: managerial | 관리의
+L49: diligent | 성실한
+L51: familiar | 익숙한, 친숙한
+L53: proficiency | 숙달, 능숙
+L55: prospective | 장래의, 미래의
+L57: appeal | 관심을 끌다, 매력적이다
+L59: specialize | ~을 전공하다, 전문적으로 다루다
+L61: apprehensive | 걱정하는, 염려하는
+L62: Many employees are apprehensive about the changes. | 많은 직원들이 변화에 대해 우려하고 있습니다. <<EXTRA not in data1>>
+L63: entitle | 자격을 주다
+L64: All members are entitled to a 10% discount. | 모든 회원은 10% 할인을 받을 권리가 있습니다. <<EXTRA not in data1>>
+L65: payroll | 임금대장, 금료명부
+L66: The company has over 500 employees on its payroll. | 그 회사는 급여 명부에 500명이 넘는 직원을 두고 있습니다. <<EXTRA not in data1>>
+L67: certification | 증명서, 증명
+L68: Professional certification can help your career. | 전문 자격증은 당신의 경력에 도움이 될 수 있습니다. <<EXTRA not in data1>>
+L69: wage | 임금, 급료
+
+=== MISSING in data2.csv (4) ===
+  - consultant | 고문, 컨설턴트 (data.csv L32)
+  - degree | 학위 (data.csv L34)
+  - recruit | (신입사원등을)모집하다 (data.csv L36)
+  - occupation | 직업 (data.csv L38)
+
+=== EXTRA in data2.csv (5) ===
+  - resume | 이력서 (data2.csv L1)
+  - Many employees are apprehensive about the changes. | 많은 직원들이 변화에 대해 우려하고 있습니다. (data2.csv L62)
+  - All members are entitled to a 10% discount. | 모든 회원은 10% 할인을 받을 권리가 있습니다. (data2.csv L64)
+  - The company has over 500 employees on its payroll. | 그 회사는 급여 명부에 500명이 넘는 직원을 두고 있습니다. (data2.csv L66)
+  - Professional certification can help your career. | 전문 자격증은 당신의 경력에 도움이 될 수 있습니다. (data2.csv L68)
