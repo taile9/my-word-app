@@ -410,10 +410,11 @@ body.dark-mode .example-box {
   word-break: keep-all;
   overflow-wrap: break-word;
   font-weight: 600;
+  white-space: pre-line;
 }
 
 .ex-eng {
-  font-size: clamp(0.9rem, 2vw, 0.9rem);
+  font-size: clamp(0.95rem, 2.1vw, 0.98rem);
   font-weight: 600;
   color: var(--text-main);
   font-style: italic;
@@ -423,7 +424,7 @@ body.dark-mode .example-box {
 }
 
 .ex-kor {
-  font-size: clamp(0.8rem, 1.75vw, 0.8rem);
+  font-size: clamp(0.88rem, 1.95vw, 0.92rem);
   color: var(--text-muted);
   margin: 0;
   word-break: keep-all;

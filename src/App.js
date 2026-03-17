@@ -118,16 +118,35 @@ function App() {
         const result = [];
         let currentEntry = null;
 
+        const parseSynonymsRaw = (raw) => {
+          const s = (raw || '').replace(/"/g, '').trim();
+          if (!s) return '';
+          // Support common encodings:
+          // - literal "\n" sequences
+          // - "||" separators
+          // - actual newlines (just in case)
+          const normalized = s
+            .replace(/\\n/g, '\n')
+            .replace(/\|\|/g, '\n');
+          const lines = normalized.split('\n').map(v => v.trim()).filter(Boolean);
+
+          const out = [];
+          for (const ln of lines) {
+            // Expect: "eng meaning" (or "eng - meaning", "eng: meaning")
+            const m = ln.match(/^([A-Za-z][A-Za-z\s'’-]*[A-Za-z])\s*(?:[-–—:]|\s{2,}|\s+)\s*(.+)$/);
+            if (!m) continue;
+            const synEng = (m[1] || '').trim();
+            const synKor = (m[2] || '').trim();
+            if (synEng && synKor) out.push(`${synEng} - ${synKor}`);
+          }
+          return out.join('\n');
+        };
+
         const finalizeAndPush = (entry) => {
           if (!entry) return;
-          const synonymMatch = entry.kor.match(/\([^)]+\)/g);
-          if (synonymMatch) {
-            entry.synonyms = synonymMatch.join(' ');
-            entry.kor = entry.kor.replace(/\([^)]+\)/g, '').trim();
-          } else {
-            entry.synonyms = '';
-          }
-          entry.kor = entry.kor.trim();
+          // 괄호( ... )는 뜻의 일부일 수 있으므로 그대로 둔다.
+          entry.kor = (entry.kor || '').trim();
+          entry.synonyms = parseSynonymsRaw(entry.synonyms || '');
           result.push(entry);
         };
 
@@ -145,6 +164,7 @@ function App() {
             const d = dayCol.replace(/[^0-9]/g, '');
             const e = (parts[1] || '').replace(/"/g, '').trim();
             const k = (parts[2] || '').replace(/"/g, '').trim();
+            const syn = (parts[3] || '').trim();
 
             if (!d || !e || !k) {
               currentEntry = null;
@@ -156,7 +176,7 @@ function App() {
               day: parseInt(d, 10),
               eng: e,
               kor: k,
-              synonyms: '',
+              synonyms: syn,
               exEng: '',
               exKor: ''
             };

@@ -9,7 +9,7 @@ beforeEach(() => {
       text: () =>
         Promise.resolve(
           [
-            'day1\tresume\t이력서',
+            'day1\tresume\t이력서\tCV 이력서\\ncurriculum vitae 라틴어 표현',
             '\tPlease submit your resume by Friday.\t금요일까지 이력서를 제출해 주세요.',
           ].join('\n')
         ),
