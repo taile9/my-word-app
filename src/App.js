@@ -51,8 +51,36 @@ const playSound = (type) => {
 const speakText = (text, lang = 'en-US') => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // cancel pending
+
+    // Force the correct voice by selecting a voice that matches the requested language.
+    // (Some devices default to a local voice even if utterance.lang is set.)
+    const getBestVoice = () => {
+      try {
+        const voices = window.speechSynthesis.getVoices?.() || [];
+        if (!voices.length) return null;
+
+        const langLower = String(lang || '').toLowerCase();
+        const base = langLower.split('-')[0];
+
+        // Prefer exact prefix match (e.g., "en-US" -> "en-US", "ko-KR" -> "ko-KR")
+        let voice = voices.find(v => String(v.lang || '').toLowerCase().startsWith(langLower));
+        if (voice) return voice;
+
+        // Fallback to base language (e.g., "en-US" -> any "en-*" voice)
+        voice = voices.find(v => String(v.lang || '').toLowerCase().startsWith(base));
+        if (voice) return voice;
+
+        // Last fallback: first voice
+        return voices[0] || null;
+      } catch {
+        return null;
+      }
+    };
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
+    const chosenVoice = getBestVoice();
+    if (chosenVoice) utterance.voice = chosenVoice;
     utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   }
@@ -507,8 +535,8 @@ function App() {
               <select className="mode-select" style={{ width: '100%', padding: '12px' }} value={quizConfig.format} onChange={(e) => setQuizConfig({ ...quizConfig, format: e.target.value })}>
                 <option value="mc-en2ko">객관식 (영 ➔ 한)</option>
                 <option value="mc-ko2en">객관식 (한 ➔ 영)</option>
-                <option value="tx-en2ko">주관식 (영 ➔ 한 뜻입력)</option>
-                <option value="tx-ko2en">주관식 (한 ➔ 영 스펠링)</option>
+                <option value="tx-en2ko">주관식 (영 ➔ 한)</option>
+                <option value="tx-ko2en">주관식 (한 ➔ 영)</option>
               </select>
             </div>
 
@@ -595,12 +623,18 @@ function App() {
                 <svg width="28" height="28" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               </button>
               <div className="question-box">
-                <h2>{quizConfig.format === 'mc-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
+                
+                <h2>
+                  {quizConfig.format === 'mc-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}
+                </h2>
               </div>
               <div className="options-grid">
                 {options.map((opt, idx) => (
                   <button key={idx} className="option-btn" disabled={quizResult !== null} onClick={() => checkMultipleChoice(opt)}>
-                    {quizConfig.format === 'mc-en2ko' ? opt.kor : opt.eng}
+                  
+                    <div className="option-val">
+                      {quizConfig.format === 'mc-en2ko' ? opt.kor : opt.eng}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -618,7 +652,9 @@ function App() {
               </button>
               <div className="question-box">
                 <h2>{quizConfig.format === 'tx-en2ko' ? quizQueue[currentIndex].eng : quizQueue[currentIndex].kor}</h2>
-                <p className="sub-hint">{quizConfig.format === 'tx-en2ko' ? '뜻을 입력하세요' : '영어 단어(스펠링)를 입력하세요'}</p>
+                <p className="sub-hint">
+                  {quizConfig.format === 'tx-en2ko' ? '뜻을 적어주세요' : '단어를 적어주세요'}
+                </p>
               </div>
 
               <form onSubmit={checkTextInput} className="text-input-form">

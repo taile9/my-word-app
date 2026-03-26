@@ -525,6 +525,7 @@ body.dark-mode .star-btn {
   border: 1px solid var(--card-border);
   margin-bottom: 24px;
   max-width: 800px;
+  width: 100%;
   height: 580px;
   margin-left: auto;
   margin-right: auto;
@@ -550,15 +551,30 @@ body.dark-mode .star-btn {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .question-box h2 {
-  font-size: clamp(1.8rem, 8cqw, 4rem);
+  font-size: clamp(1.2rem, 6vw, 2.4rem);
   margin: 0;
   color: var(--text-main);
   word-break: keep-all;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
   font-weight: 800;
+  width: 100%;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.1;
+}
+
+.quiz-label {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  width: 100%;
+  text-align: center;
 }
 
 .sub-hint {
@@ -571,17 +587,8 @@ body.dark-mode .star-btn {
 .options-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-@media (min-width: 600px) {
-  .options-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .options-grid> :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
+  gap: 10px;
+  width: 100%;
 }
 
 .option-btn {
@@ -589,12 +596,32 @@ body.dark-mode .star-btn {
   border: 2px solid var(--input-border);
   padding: 18px 20px;
   border-radius: 16px;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-main);
   cursor: pointer;
   text-align: center;
   box-shadow: 0 2px 8px var(--shadow-color);
+  width: 100%;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  white-space: normal;
+  line-height: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-num {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.option-val {
+  width: 100%;
 }
 
 .option-btn:hover:not(:disabled) {
@@ -615,6 +642,7 @@ body.dark-mode .star-btn {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .text-input-form input {
@@ -626,6 +654,7 @@ body.dark-mode .star-btn {
   font-size: 1.3rem;
   color: var(--text-main);
   outline: none;
+  min-width: 0; /* allow flex item to shrink without overflowing */
 }
 
 .text-input-form input:focus {
@@ -643,6 +672,7 @@ body.dark-mode .star-btn {
   font-size: 1.2rem;
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  flex: 0 0 auto;
 }
 
 .text-input-form button:hover:not(:disabled) {
@@ -669,6 +699,53 @@ body.dark-mode .star-btn {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Mobile / narrow screens: adjust sizes to prevent horizontal breaks */
+@media (max-width: 480px) {
+  .app-container {
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  body {
+    align-items: flex-start;
+  }
+
+  .quiz-panel {
+    padding: 20px 14px;
+    max-width: 100%;
+    height: 580px;
+  }
+
+  .question-box h2 {
+    font-size: clamp(1.2rem, 8vw, 2.0rem);
+  }
+
+  .options-grid {
+    gap: 10px;
+  }
+
+  .option-btn {
+    padding: 14px 10px;
+    font-size: 1.02rem;
+  }
+
+  .text-input-form {
+    flex-direction: column; /* keep submit inside */
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .text-input-form input {
+    padding: 16px;
+    font-size: 1.15rem;
+  }
+
+  .text-input-form button {
+    padding: 16px 18px;
+    font-size: 1.05rem;
   }
 }
 
